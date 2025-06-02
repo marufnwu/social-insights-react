@@ -1,0 +1,210 @@
+/* Global Styles */
+:root {
+  --primary-color: #4e73df;
+  --secondary-color: #1cc88a;
+  --danger-color: #e74a3b;
+  --warning-color: #f6c23e;
+  --info-color: #36b9cc;
+  --dark-color: #5a5c69;
+  --light-color: #f8f9fc;
+  --border-color: #e3e6f0;
+}
+
+body {
+  background-color: var(--light-color);
+  font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Layout Styles */
+.sidebar {
+  min-height: 100vh;
+  background-color: var(--primary-color);
+  background-image: linear-gradient(180deg, var(--primary-color) 10%, #224abe 100%);
+  background-size: cover;
+  color: white;
+}
+
+.sidebar-brand {
+  font-size: 1.2rem;
+  font-weight: 800;
+  text-align: center;
+  padding: 1.5rem 1rem;
+}
+
+.sidebar-divider {
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  margin: 1rem 0;
+}
+
+.nav-link {
+  color: rgba(255, 255, 255, 0.8);
+  padding: 0.8rem 1rem;
+  transition: all 0.2s;
+}
+
+.nav-link:hover {
+  color: white;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-link.active {
+  color: white;
+  font-weight: 700;
+}
+
+.nav-link .icon {
+  margin-right: 0.5rem;
+}
+
+/* Card Styles */
+.card {
+  border: none;
+  border-radius: 0.35rem;
+  box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+  margin-bottom: 1.5rem;
+}
+
+.card-header {
+  background-color: white;
+  border-bottom: 1px solid var(--border-color);
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-header h6 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+/* Widget Styles */
+.widget-card {
+  border-left: 4px solid var(--primary-color);
+}
+
+.widget-card.facebook {
+  border-left-color: #3b5998;
+}
+
+.widget-card.youtube {
+  border-left-color: #c4302b;
+}
+
+.widget-card.instagram {
+  border-left-color: #e1306c;
+}
+
+.widget-icon {
+  font-size: 2rem;
+  opacity: 0.3;
+}
+
+.widget-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.widget-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--dark-color);
+}
+
+.widget-trend {
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+}
+
+.widget-trend.up {
+  color: var(--secondary-color);
+}
+
+.widget-trend.down {
+  color: var(--danger-color);
+}
+
+.widget-trend.stable {
+  color: var(--warning-color);
+}
+
+/* Auth Forms */
+.auth-form-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--light-color);
+}
+
+.auth-form {
+  width: 100%;
+  max-width: 420px;
+  padding: 15px;
+}
+
+.auth-logo {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 1rem;
+}
+
+.auth-heading {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* Loading Screen */
+.loading-screen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 1.5rem;
+  color: var(--primary-color);
+}
+
+/* Social Connection Buttons */
+.social-connection-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 10px;
+}
+
+.social-connection-btn.youtube {
+  background-color: #c4302b;
+  color: white;
+}
+
+.social-connection-btn.facebook {
+  background-color: #3b5998;
+  color: white;
+}
+
+.social-connection-btn.instagram {
+  background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+  color: white;
+}
+
+/* Analytics Charts */
+.chart-container {
+  height: 300px;
+  position: relative;
+}
+
+/* Media Queries */
+@media (max-width: 768px) {
+  .sidebar {
+    min-height: auto;
+  }
+}
