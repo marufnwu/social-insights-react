@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Alert, Table } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlug, faCheck, faTimes, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
@@ -16,17 +16,77 @@ const ConnectionManager = () => {
     loadingProviders, 
     loadingConnections,
     getLoginUrl,
-    disconnectProvider 
+    disconnectProvider,
+    processOAuthCallback,
+    refreshConnections
   } = useSocialMedia();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [processing, setProcessing] = useState(false);
+
+  // Add event listener for messages from the popup window
+  useEffect(() => {
+    const handleMessage = async (event) => {
+      // Add debug logging
+      console.log('Received postMessage event:', event);
+      console.log('Message data:', event.data);
+      
+      // Check if the message is from our OAuth popup with the correct type
+      if (event.data && event.data.type === 'OAUTH_CALLBACK' && event.data.payload) {
+        const { provider, code, userId } = event.data.payload;
+        
+        console.log('Received OAUTH_CALLBACK message with payload:', event.data.payload);
+        
+        if (!provider || !code) {
+          console.error('Missing required OAuth parameters in callback');
+          setError('Missing required OAuth parameters in callback');
+          return;
+        }
+        
+        console.log(`Processing OAuth callback for ${provider} with code ${code.substring(0, 10)}...`);
+        setProcessing(true);
+        setError('');
+        
+        try {
+          // Process the OAuth code received from the popup
+          await processOAuthCallback(provider, code);
+          setSuccess(`Successfully connected to ${provider}!`);
+          refreshConnections();
+        } catch (error) {
+          console.error('OAuth processing error:', error);
+          setError(`Failed to complete connection: ${error.response?.data?.message || error.message}`);
+        } finally {
+          setProcessing(false);
+        }
+      }
+    };
+
+    // Add event listener for 'message' event
+    window.addEventListener('message', handleMessage);
+    
+    // Return cleanup function
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [processOAuthCallback, refreshConnections]);
 
   const handleConnect = async (provider) => {
     try {
       setError('');
+      setSuccess('');
+      console.log(`Getting login URL for ${provider}...`);
       const loginUrl = await getLoginUrl(provider);
-      window.open(loginUrl, '_blank', 'width=600,height=700');
+      console.log(`Opening OAuth window for ${provider} with URL: ${loginUrl}`);
+      
+      // Open OAuth popup window
+      const popupWindow = window.open(loginUrl, '_blank', 'width=600,height=700');
+      
+      // Check if popup was blocked
+      if (!popupWindow || popupWindow.closed || typeof popupWindow.closed === 'undefined') {
+        setError("Popup window was blocked. Please allow popups for this website.");
+      }
     } catch (error) {
+      console.error('Failed to generate login URL:', error);
       setError(`Failed to generate login URL: ${error.response?.data?.message || error.message}`);
     }
   };
@@ -70,6 +130,16 @@ const ConnectionManager = () => {
 
       {error && <Alert variant="danger">{error}</Alert>}
       {success && <Alert variant="success">{success}</Alert>}
+      {processing && (
+        <Alert variant="info">
+          <div className="d-flex align-items-center">
+            <div className="spinner-border spinner-border-sm me-2" role="status">
+              <span className="visually-hidden">Processing...</span>
+            </div>
+            <div>Processing authentication... Please wait.</div>
+          </div>
+        </Alert>
+      )}
 
       <Row className="mb-4">
         <Col>
@@ -110,6 +180,7 @@ const ConnectionManager = () => {
                           variant={hasConnection ? "outline-secondary" : "primary"}
                           className="w-100"
                           onClick={() => handleConnect(provider.provider)}
+                          disabled={processing}
                         >
                           {hasConnection ? 'Reconnect' : 'Connect'} {provider.name}
                         </Button>
@@ -128,7 +199,12 @@ const ConnectionManager = () => {
           <Card className="shadow-sm">
             <Card.Header className="d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Your Connected Accounts</h5>
-              <Button variant="outline-primary" size="sm" onClick={() => window.location.reload()}>
+              <Button 
+                variant="outline-primary" 
+                size="sm" 
+                onClick={() => refreshConnections()}
+                disabled={processing || loadingConnections}
+              >
                 <FontAwesomeIcon icon={faPlug} className="me-1" />
                 Refresh Connections
               </Button>
@@ -201,6 +277,7 @@ const ConnectionManager = () => {
                               connection.provider, 
                               connection.provider_user_id
                             )}
+                            disabled={processing}
                           >
                             <FontAwesomeIcon icon={faTrashAlt} className="me-1" />
                             Disconnect

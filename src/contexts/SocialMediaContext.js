@@ -77,17 +77,23 @@ export const SocialMediaProvider = ({ children }) => {
 
   const processOAuthCallback = async (provider, code) => {
     try {
+      console.log(`Sending callback request to API for ${provider}`);
       const response = await api.post('/api/social-media/auth/callback', {
         provider,
         code
       });
+
+      console.log('API response:', response.data);
+
+      // Refresh connections list after successful processing
       await fetchConnections();
+
       return response.data;
     } catch (error) {
       console.error('Failed to process OAuth callback:', error);
       throw error;
     }
-  };
+  };;
 
   const disconnectProvider = async (provider, providerId) => {
     try {
@@ -105,9 +111,18 @@ export const SocialMediaProvider = ({ children }) => {
 
   const saveWidgetPreferences = async (preferencesData) => {
     try {
+      // Format the data according to the API documentation
       const response = await api.post('/api/widget/preferences', {
-        connections: preferencesData
+        connections: preferencesData.map(pref => ({
+          connection_id: pref.connection_id,
+          is_enabled: pref.is_enabled,
+          display_order: pref.display_order,
+          custom_label: pref.custom_label,
+          refresh_interval: pref.refresh_interval
+        }))
       });
+
+      // Refresh the preferences after saving
       await fetchWidgetPreferences();
       return response.data;
     } catch (error) {
@@ -127,11 +142,27 @@ export const SocialMediaProvider = ({ children }) => {
     }
   };
 
+  // Make sure you have these functions in your context:
+  const refreshWidgetPreferences = async () => {
+    try {
+      setLoadingPreferences(true);
+      const response = await api.get('/api/widget/preferences');
+      setWidgetPreferences(response.data.data.connections);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to refresh widget preferences:', error);
+      throw error;
+    } finally {
+      setLoadingPreferences(false);
+    }
+  };
+
   const value = {
     providers,
     connections,
     widgetPreferences,
     loadingProviders,
+    refreshWidgetPreferences,
     loadingConnections,
     loadingPreferences,
     getLoginUrl,

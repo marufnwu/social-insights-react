@@ -37,13 +37,13 @@ body {
 }
 
 .nav-link {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.8) !important;
   padding: 0.8rem 1rem;
   transition: all 0.2s;
 }
 
 .nav-link:hover {
-  color: white;
+  color: white !important;
   background-color: rgba(255, 255, 255, 0.1);
 }
 

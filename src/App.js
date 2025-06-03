@@ -36,7 +36,7 @@ function App() {
 
   return (
     <Routes>
-      {/* Public routes */}
+      {/* Public routes - OAuth callback needs to be here */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/oauth/callback" element={<OAuthCallback />} />

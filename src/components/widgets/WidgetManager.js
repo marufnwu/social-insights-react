@@ -9,12 +9,10 @@ import {
   faInstagram
 } from '@fortawesome/free-brands-svg-icons';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-
-// You would need to install react-beautiful-dnd for the drag-and-drop functionality
-// npm install react-beautiful-dnd
+import api from '../../services/api';
 
 const WidgetManager = () => {
-  const { connections, widgetPreferences, loadingConnections, loadingPreferences, saveWidgetPreferences, toggleWidgetVisibility } = useSocialMedia();
+  const { connections, widgetPreferences, loadingConnections, loadingPreferences, refreshWidgetPreferences } = useSocialMedia();
   const [widgetSettings, setWidgetSettings] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -25,17 +23,20 @@ const WidgetManager = () => {
     if (!loadingPreferences && !loadingConnections) {
       // Combine connections and preferences
       const settings = connections.map(connection => {
-        const preference = widgetPreferences.find(p => p.connection_id === connection.id) || {};
+        // Find preference for this connection, if exists
+        const preference = widgetPreferences.find(p => p.connection_id === connection.id);
+        
+        // Return combined data
         return {
           connection_id: connection.id,
           provider: connection.provider,
           provider_name: connection.provider_name,
           username: connection.username,
           picture: connection.picture,
-          is_enabled: preference.is_enabled !== undefined ? preference.is_enabled : true,
-          display_order: preference.display_order !== undefined ? preference.display_order : 999,
-          custom_label: preference.custom_label || connection.username,
-          refresh_interval: preference.refresh_interval || 15
+          is_enabled: preference ? preference.is_enabled : true, // Default to enabled if no preference
+          display_order: preference ? preference.display_order : 999,
+          custom_label: preference ? preference.custom_label : connection.username,
+          refresh_interval: preference ? preference.refresh_interval : 15
         };
       });
 
@@ -44,14 +45,34 @@ const WidgetManager = () => {
     }
   }, [connections, widgetPreferences, loadingConnections, loadingPreferences]);
 
+  // Save all widget preferences
   const handleSavePreferences = async () => {
     try {
       setSaving(true);
       setError('');
       setSuccess('');
 
-      await saveWidgetPreferences(widgetSettings);
-      setSuccess('Widget preferences saved successfully!');
+      // Format data according to the API docs
+      const formattedData = {
+        connections: widgetSettings.map(setting => ({
+          connection_id: setting.connection_id,
+          is_enabled: setting.is_enabled,
+          display_order: setting.display_order,
+          custom_label: setting.custom_label,
+          refresh_interval: setting.refresh_interval
+        }))
+      };
+
+      // Call API directly to ensure proper formatting
+      const response = await api.post('/api/widget/preferences', formattedData);
+      
+      if (response.data.success) {
+        setSuccess('Widget preferences saved successfully!');
+        // Refresh widget preferences in context
+        await refreshWidgetPreferences();
+      } else {
+        setError(response.data.message || 'Failed to save preferences');
+      }
     } catch (error) {
       setError(`Failed to save preferences: ${error.response?.data?.message || error.message}`);
     } finally {
@@ -59,6 +80,7 @@ const WidgetManager = () => {
     }
   };
 
+  // Toggle visibility for a single widget
   const handleToggleVisibility = async (connectionId) => {
     try {
       const updatedSettings = widgetSettings.map(setting => {
@@ -68,8 +90,10 @@ const WidgetManager = () => {
         return setting;
       });
       setWidgetSettings(updatedSettings);
+      
+      // Note: We don't save on each toggle, only when the save button is pressed
     } catch (error) {
-      setError(`Failed to toggle visibility: ${error.response?.data?.message || error.message}`);
+      setError(`Failed to toggle visibility: ${error.message}`);
     }
   };
 
@@ -143,6 +167,9 @@ const WidgetManager = () => {
     );
   }
 
+  // Count enabled widgets
+  const enabledWidgets = widgetSettings.filter(setting => setting.is_enabled).length;
+
   return (
     <Container>
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -161,8 +188,11 @@ const WidgetManager = () => {
       {success && <Alert variant="success">{success}</Alert>}
 
       <Card className="shadow-sm mb-4">
-        <Card.Header>
+        <Card.Header className="d-flex justify-content-between align-items-center">
           <h5 className="mb-0">Configure Your Widgets</h5>
+          <span className="badge bg-primary">
+            {enabledWidgets} of {widgetSettings.length} widgets enabled
+          </span>
         </Card.Header>
         <Card.Body>
           <p className="text-muted mb-4">
@@ -187,7 +217,7 @@ const WidgetManager = () => {
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          className="mb-3 border rounded p-3"
+                          className={`mb-3 border rounded p-3 ${!setting.is_enabled ? 'bg-light' : ''}`}
                         >
                           <Row className="align-items-center">
                             <Col xs="auto" {...provided.dragHandleProps}>
@@ -203,7 +233,8 @@ const WidgetManager = () => {
                                   width: '40px', 
                                   height: '40px', 
                                   backgroundColor: getProviderColor(setting.provider),
-                                  color: 'white'
+                                  color: 'white',
+                                  opacity: setting.is_enabled ? 1 : 0.5
                                 }}
                               >
                                 <FontAwesomeIcon icon={getProviderIcon(setting.provider)} />
@@ -213,6 +244,7 @@ const WidgetManager = () => {
                             <Col>
                               <div className="mb-2">
                                 <strong>{setting.provider_name}</strong> - {setting.username}
+                                {!setting.is_enabled && <span className="badge bg-secondary ms-2">Hidden</span>}
                               </div>
                               <Row>
                                 <Col md={6}>
@@ -220,7 +252,7 @@ const WidgetManager = () => {
                                     <Form.Label>Display Label</Form.Label>
                                     <Form.Control
                                       type="text"
-                                      value={setting.custom_label}
+                                      value={setting.custom_label || ''}
                                       onChange={(e) => handleInputChange(
                                         setting.connection_id, 
                                         'custom_label', 
@@ -278,7 +310,10 @@ const WidgetManager = () => {
             </Droppable>
           </DragDropContext>
         </Card.Body>
-        <Card.Footer className="d-flex justify-content-end">
+        <Card.Footer className="d-flex justify-content-between align-items-center">
+          <div>
+            {enabledWidgets} of {widgetSettings.length} widgets will be shown on dashboard
+          </div>
           <Button 
             variant="primary" 
             onClick={handleSavePreferences}

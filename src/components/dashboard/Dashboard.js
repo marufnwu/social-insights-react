@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Button } from 'react-bootstrap';
+import { Row, Col, Card, Button, Alert } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -8,7 +8,8 @@ import {
   faArrowUp,
   faArrowDown,
   faMinus,
-  faPlug
+  faPlug,
+  faCog
 } from '@fortawesome/free-solid-svg-icons';
 import {
   faYoutube,
@@ -16,7 +17,7 @@ import {
   faInstagram
 } from '@fortawesome/free-brands-svg-icons';
 import api from '../../services/api';
-import SocialStatsWidget from '../widgets/SocialStatsWidget';
+import AutoRefreshSocialWidget from '../widgets/AutoRefreshSocialWidget';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSocialMedia } from '../../contexts/SocialMediaContext';
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts';
@@ -25,8 +26,10 @@ import { getAppCurrentDateTime } from '../../utils/dateUtils';
 
 const Dashboard = () => {
   const { currentUser } = useAuth();
-  const { connections, loadingConnections } = useSocialMedia();
+  const { connections, loadingConnections, widgetPreferences, loadingPreferences } = useSocialMedia();
+  
   const [socialStats, setSocialStats] = useState(null);
+  const [visibleConnections, setVisibleConnections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [growthData, setGrowthData] = useState(null);
@@ -39,14 +42,14 @@ const Dashboard = () => {
       
       // If there are connections, fetch growth data
       if (connections.length > 0) {
-        fetchGrowthData(connections[0].id); // Use the first connection by default
+        fetchGrowthData(connections[0].id);
       } else {
         setLoadingGrowthData(false);
       }
     }
   }, [loadingConnections, connections]);
 
-  const fetchSocialStats = async (forceRefresh = false) => {
+  const fetchSocialStats = async (forceRefresh = 0) => {
     try {
       setLoading(true);
       if (forceRefresh) {
@@ -58,6 +61,12 @@ const Dashboard = () => {
       });
       
       setSocialStats(response.data.data);
+      
+      // Set the visible connections based on what the API returns
+      if (response.data.data && response.data.data.connections) {
+        setVisibleConnections(response.data.data.connections);
+      }
+      
       setLastUpdated(getAppCurrentDateTime());
     } catch (error) {
       console.error('Failed to fetch social stats:', error);
@@ -97,7 +106,17 @@ const Dashboard = () => {
   };
 
   const handleRefresh = () => {
-    fetchSocialStats(true);
+    fetchSocialStats(1);
+  };
+
+  // Get widget preference for a connection
+  const getWidgetPreference = (connectionId) => {
+    return widgetPreferences.find(pref => pref.connection_id === connectionId) || null;
+  };
+
+  // Find full connection details from connection ID
+  const getConnectionById = (connectionId) => {
+    return connections.find(conn => conn.id === connectionId) || null;
   };
 
   return (
@@ -108,14 +127,20 @@ const Dashboard = () => {
         <p className="text-muted">
           Last updated: {lastUpdated}
         </p>
-        <Button 
-          variant="primary" 
-          onClick={handleRefresh} 
-          disabled={refreshing}
-        >
-          <FontAwesomeIcon icon={faSyncAlt} spin={refreshing} className="me-2" />
-          {refreshing ? 'Refreshing...' : 'Refresh Data'}
-        </Button>
+        <div>
+          <Link to="/widgets" className="btn btn-outline-secondary me-2">
+            <FontAwesomeIcon icon={faCog} className="me-1" />
+            Configure Widgets
+          </Link>
+          <Button 
+            variant="primary" 
+            onClick={handleRefresh} 
+            disabled={refreshing}
+          >
+            <FontAwesomeIcon icon={faSyncAlt} spin={refreshing} className="me-2" />
+            {refreshing ? 'Refreshing...' : 'Refresh Data'}
+          </Button>
+        </div>
       </div>
 
       {!loadingConnections && connections.length === 0 ? (
@@ -137,20 +162,54 @@ const Dashboard = () => {
         </Card>
       ) : (
         <>
-          <Row>
-            {loading && !socialStats ? (
-              <Col>
-                <div className="text-center p-5">
+          <Card className="shadow-sm mb-4">
+            <Card.Header className="d-flex justify-content-between align-items-center">
+              <h5 className="mb-0">Social Media Widgets</h5>
+              {!loading && socialStats && (
+                <span className="badge bg-secondary">
+                  Showing {socialStats.connections?.length || 0} of {connections.length} connections
+                </span>
+              )}
+            </Card.Header>
+            <Card.Body>
+              {loading && !socialStats ? (
+                <div className="text-center p-4">
                   <div className="spinner-border text-primary" role="status">
                     <span className="visually-hidden">Loading...</span>
                   </div>
-                  <p className="mt-2">Loading your social media data...</p>
+                  <p className="mt-2">Loading widgets...</p>
                 </div>
-              </Col>
-            ) : socialStats?.connections?.map((connection) => (
-              <SocialStatsWidget key={connection.connection_id} connection={connection} />
-            ))}
-          </Row>
+              ) : visibleConnections.length === 0 ? (
+                <Alert variant="info">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div>
+                      No visible social media widgets. Go to Widget Manager to configure your widgets.
+                    </div>
+                    <Link to="/widgets" className="btn btn-sm btn-primary">
+                      Widget Manager
+                    </Link>
+                  </div>
+                </Alert>
+              ) : (
+                <Row>
+                  {visibleConnections.map(connectionData => {
+                    const connection = getConnectionById(connectionData.connection_id);
+                    if (!connection) return null;
+                    
+                    return (
+                      <AutoRefreshSocialWidget
+                        key={connectionData.connection_id}
+                        connection={connection}
+                        widgetData={connectionData}
+                        widgetPreference={getWidgetPreference(connectionData.connection_id)}
+                        isVisible={true}
+                      />
+                    );
+                  })}
+                </Row>
+              )}
+            </Card.Body>
+          </Card>
 
           <Row className="mt-4">
             <Col lg={8}>
