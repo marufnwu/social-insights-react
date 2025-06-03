@@ -10,10 +10,10 @@ import {
 import { useSocialMedia } from '../../contexts/SocialMediaContext';
 
 const ConnectionManager = () => {
-  const { 
-    providers, 
-    connections, 
-    loadingProviders, 
+  const {
+    providers,
+    connections,
+    loadingProviders,
     loadingConnections,
     getLoginUrl,
     disconnectProvider,
@@ -30,23 +30,23 @@ const ConnectionManager = () => {
       // Add debug logging
       console.log('Received postMessage event:', event);
       console.log('Message data:', event.data);
-      
+
       // Check if the message is from our OAuth popup with the correct type
       if (event.data && event.data.type === 'OAUTH_CALLBACK' && event.data.payload) {
         const { provider, code, userId } = event.data.payload;
-        
+
         console.log('Received OAUTH_CALLBACK message with payload:', event.data.payload);
-        
+
         if (!provider || !code) {
           console.error('Missing required OAuth parameters in callback');
           setError('Missing required OAuth parameters in callback');
           return;
         }
-        
+
         console.log(`Processing OAuth callback for ${provider} with code ${code.substring(0, 10)}...`);
         setProcessing(true);
         setError('');
-        
+
         try {
           // Process the OAuth code received from the popup
           await processOAuthCallback(provider, code);
@@ -63,7 +63,7 @@ const ConnectionManager = () => {
 
     // Add event listener for 'message' event
     window.addEventListener('message', handleMessage);
-    
+
     // Return cleanup function
     return () => {
       window.removeEventListener('message', handleMessage);
@@ -77,10 +77,10 @@ const ConnectionManager = () => {
       console.log(`Getting login URL for ${provider}...`);
       const loginUrl = await getLoginUrl(provider);
       console.log(`Opening OAuth window for ${provider} with URL: ${loginUrl}`);
-      
+
       // Open OAuth popup window
       const popupWindow = window.open(loginUrl, '_blank', 'width=600,height=700');
-      
+
       // Check if popup was blocked
       if (!popupWindow || popupWindow.closed || typeof popupWindow.closed === 'undefined') {
         setError("Popup window was blocked. Please allow popups for this website.");
@@ -95,11 +95,11 @@ const ConnectionManager = () => {
     try {
       setError('');
       setSuccess('');
-      
+
       if (!window.confirm(`Are you sure you want to disconnect this ${provider} account?`)) {
         return;
       }
-      
+
       await disconnectProvider(provider, providerId);
       setSuccess(`Successfully disconnected from ${provider}`);
     } catch (error) {
@@ -123,7 +123,7 @@ const ConnectionManager = () => {
 
   // Group providers by parent
   const mainProviders = providers.filter(p => p.is_main);
-  
+
   return (
     <Container>
       <h2 className="mb-4">Social Media Connections</h2>
@@ -159,12 +159,12 @@ const ConnectionManager = () => {
                 <Row>
                   {mainProviders.map((provider) => {
                     // Find if user has any connection for this provider family
-                    const hasConnection = connections.some(c => 
-                      c.provider === provider.provider || 
+                    const hasConnection = connections.some(c =>
+                      c.provider === provider.provider ||
                       (provider.provider === 'facebook' && c.provider.startsWith('facebook_')) ||
                       (provider.provider === 'instagram' && c.provider.startsWith('instagram_'))
                     );
-                    
+
                     return (
                       <Col key={provider.provider} md={4} className="mb-3">
                         <div className={`social-connection-btn ${provider.provider}`}>
@@ -199,9 +199,9 @@ const ConnectionManager = () => {
           <Card className="shadow-sm">
             <Card.Header className="d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Your Connected Accounts</h5>
-              <Button 
-                variant="outline-primary" 
-                size="sm" 
+              <Button
+                variant="outline-primary"
+                size="sm"
                 onClick={() => refreshConnections()}
                 disabled={processing || loadingConnections}
               >
@@ -237,8 +237,8 @@ const ConnectionManager = () => {
                     {connections.map((connection) => (
                       <tr key={connection.id}>
                         <td>
-                          <FontAwesomeIcon 
-                            icon={getProviderIcon(connection.provider)} 
+                          <FontAwesomeIcon
+                            icon={getProviderIcon(connection.provider)}
                             style={{ color: getProviderColor(connection.provider) }}
                             size="lg"
                             className="me-2"
@@ -248,9 +248,9 @@ const ConnectionManager = () => {
                         <td>
                           <div className="d-flex align-items-center">
                             {connection.picture && (
-                              <img 
-                                src={connection.picture} 
-                                alt={connection.username} 
+                              <img
+                                src={connection.picture}
+                                alt={connection.username}
                                 style={{ width: '30px', height: '30px', borderRadius: '50%', marginRight: '10px' }}
                               />
                             )}
@@ -270,11 +270,11 @@ const ConnectionManager = () => {
                           )}
                         </td>
                         <td>
-                          <Button 
-                            variant="danger" 
+                          <Button
+                            variant="danger"
                             size="sm"
                             onClick={() => handleDisconnect(
-                              connection.provider, 
+                              connection.provider,
                               connection.provider_user_id
                             )}
                             disabled={processing}
